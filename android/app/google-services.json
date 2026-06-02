@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1088707971501",
+    "project_id": "pastillasid",
+    "storage_bucket": "pastillasid.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1088707971501:android:d6dbab3fdf4f1a8f45f924",
+        "android_client_info": {
+          "package_name": "com.example.pastillasid"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1088707971501-bjt6n67c99imbjkogvg9lj7o83g4lq18.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.pastillasid",
+            "certificate_hash": "58ed4096ab78addbf6ef177c921027978fcf4020"
+          }
+        },
+        {
+          "client_id": "1088707971501-9ub20asd1n8vbi8vrr7ua702ecml7hl6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDGpG2NysXnnLsxpmvDJOyW1A_Y-23LgU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1088707971501-9ub20asd1n8vbi8vrr7ua702ecml7hl6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1088707971501-1khkp4ef1v37uiimplf069kcadla3vr4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.pastillasid"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

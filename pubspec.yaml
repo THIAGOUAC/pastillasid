@@ -1,0 +1,53 @@
+name: pastillasid
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Iconos base
+  cupertino_icons: ^1.0.8
+
+  # Estado y arquitectura
+  flutter_riverpod: ^2.6.1
+  go_router: ^16.2.5
+  get_it: ^8.2.0
+  equatable: ^2.0.7
+  dartz: ^0.10.1
+
+  # Firebase y Google Sign-In
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  cloud_firestore: ^6.1.0
+  google_sign_in: ^7.2.0
+
+  # Utilidades
+  intl: ^0.20.2
+
+  # Notificaciones locales
+  flutter_local_notifications: ^19.5.0
+  timezone: ^0.10.1
+
+  # Cámara, galería e IA
+  image_picker: ^1.2.2
+  firebase_ai: ^3.12.1
+
+  # Ubicación y mapas
+  geolocator: ^14.0.2
+  google_maps_flutter: ^2.13.1
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
