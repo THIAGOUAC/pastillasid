@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../controllers/medicine_scan_controller.dart';
@@ -61,9 +63,7 @@ class _ScanMedicinePageState extends ConsumerState<ScanMedicinePage> {
 
     if (image == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Primero selecciona una imagen'),
-        ),
+        const SnackBar(content: Text('Primero selecciona una imagen')),
       );
       return;
     }
@@ -71,6 +71,23 @@ class _ScanMedicinePageState extends ConsumerState<ScanMedicinePage> {
     await ref
         .read(medicineScanControllerProvider.notifier)
         .analyzeMedicineImage(image);
+  }
+
+  void _registerMedicationFromAI(String result) {
+    final data = _parseAIResult(result);
+
+    if (data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se pudo convertir el resultado de IA. Revisa que sea JSON válido.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    context.push('/medications/new', extra: data);
   }
 
   @override
@@ -82,9 +99,7 @@ class _ScanMedicinePageState extends ConsumerState<ScanMedicinePage> {
       next.whenOrNull(
         error: (error, _) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No se pudo analizar la imagen: $error'),
-            ),
+            SnackBar(content: Text('No se pudo analizar la imagen: $error')),
           );
         },
       );
@@ -212,10 +227,23 @@ class _ScanMedicinePageState extends ConsumerState<ScanMedicinePage> {
                         'Resultado de IA',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Revisa los datos extraídos. Luego podrás completar o corregir la información antes de guardar.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                       const SizedBox(height: 12),
                       SelectableText(
                         result,
                         style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _registerMedicationFromAI(result),
+                        icon: const Icon(Icons.medication),
+                        label: const Text(
+                          'Registrar medicamento con estos datos',
+                        ),
                       ),
                     ],
                   ),
@@ -255,4 +283,44 @@ class _ScanMedicinePageState extends ConsumerState<ScanMedicinePage> {
       ),
     );
   }
+}
+
+Map<String, dynamic>? _parseAIResult(String result) {
+  try {
+    final cleanText = _cleanJsonText(result);
+    final decoded = jsonDecode(cleanText);
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+String _cleanJsonText(String text) {
+  var cleaned = text.trim();
+
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replaceFirst('```json', '').trim();
+  }
+
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replaceFirst('```', '').trim();
+  }
+
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.substring(0, cleaned.length - 3).trim();
+  }
+
+  final start = cleaned.indexOf('{');
+  final end = cleaned.lastIndexOf('}');
+
+  if (start != -1 && end != -1 && end > start) {
+    cleaned = cleaned.substring(start, end + 1);
+  }
+
+  return cleaned;
 }

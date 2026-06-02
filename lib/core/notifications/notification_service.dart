@@ -11,11 +11,16 @@ class NotificationService {
   static const String actionTaken = 'action_taken';
   static const String actionSnooze = 'action_snooze';
 
+  static const String _channelId = 'medication_reminders';
+  static const String _channelName = 'Recordatorios de medicamentos';
+  static const String _channelDescription =
+      'Notificaciones para recordar tomas de medicamentos';
+
   static const AndroidNotificationChannel _medicationChannel =
       AndroidNotificationChannel(
-        'medication_reminders',
-        'Recordatorios de medicamentos',
-        description: 'Notificaciones para recordar tomas de medicamentos',
+        _channelId,
+        _channelName,
+        description: _channelDescription,
         importance: Importance.max,
       );
 
@@ -46,34 +51,21 @@ class NotificationService {
   }
 
   static Future<void> requestPermissions() async {
-    await _notifications
+    final androidImplementation = _notifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+        >();
 
-    await _notifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestExactAlarmsPermission();
+    await androidImplementation?.requestNotificationsPermission();
+    await androidImplementation?.requestExactAlarmsPermission();
   }
 
   static Future<void> showTestNotification() async {
     await _notifications.show(
       999,
       'Pastillas ID',
-      'Notificación de prueba funcionando',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'medication_reminders',
-          'Recordatorios de medicamentos',
-          channelDescription:
-              'Notificaciones para recordar tomas de medicamentos',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
+      'Notificación funcionando correctamente',
+      NotificationDetails(android: _basicNotificationDetails()),
     );
   }
 
@@ -85,16 +77,7 @@ class NotificationService {
       medicationName.hashCode.abs() % 2147483647,
       'Stock bajo',
       '$medicationName está por acabarse. Stock actual: ${_formatNumber(currentStock)}',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'medication_reminders',
-          'Recordatorios de medicamentos',
-          channelDescription:
-              'Notificaciones para recordar tomas de medicamentos',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
+      NotificationDetails(android: _basicNotificationDetails()),
     );
   }
 
@@ -104,7 +87,7 @@ class NotificationService {
     required String doseText,
     required List<String> times,
   }) async {
-    await cancelMedicationReminders(medicationId, times.length);
+    await cancelMedicationReminders(medicationId, 20);
 
     for (var index = 0; index < times.length; index++) {
       final time = times[index];
@@ -114,15 +97,14 @@ class NotificationService {
         index: index,
       );
 
-      await _notifications.zonedSchedule(
-        notificationId,
-        'Hora de tomar tu medicamento',
-        '$medicationName - $doseText',
-        scheduledDate,
-        NotificationDetails(android: _medicationNotificationDetails()),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
+      await _safeZonedSchedule(
+        id: notificationId,
+        title: 'Hora de tomar tu medicamento',
+        body: '$medicationName - $doseText',
+        scheduledDate: scheduledDate,
         payload: '$medicationId|$medicationName|$doseText',
+        daily: true,
+        withActions: true,
       );
     }
   }
@@ -136,13 +118,14 @@ class NotificationService {
       tz.local,
     ).add(Duration(minutes: minutes));
 
-    await _notifications.zonedSchedule(
-      DateTime.now().millisecondsSinceEpoch % 2147483647,
-      'Recordatorio pospuesto',
-      '$medicationName - $doseText',
-      scheduledDate,
-      NotificationDetails(android: _medicationNotificationDetails()),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    await _safeZonedSchedule(
+      id: DateTime.now().millisecondsSinceEpoch % 2147483647,
+      title: 'Recordatorio pospuesto',
+      body: '$medicationName - $doseText',
+      scheduledDate: scheduledDate,
+      payload: 'snooze|$medicationName|$doseText',
+      daily: false,
+      withActions: true,
     );
   }
 
@@ -152,14 +135,55 @@ class NotificationService {
     required String doseText,
     required DateTime scheduledDate,
   }) async {
-    await _notifications.zonedSchedule(
-      id,
-      'Hora de tomar tu medicamento',
-      '$medicationName - $doseText',
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      NotificationDetails(android: _medicationNotificationDetails()),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    await _safeZonedSchedule(
+      id: id,
+      title: 'Hora de tomar tu medicamento',
+      body: '$medicationName - $doseText',
+      scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
+      payload: '$id|$medicationName|$doseText',
+      daily: false,
+      withActions: true,
     );
+  }
+
+  static Future<void> _safeZonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduledDate,
+    required String payload,
+    required bool daily,
+    required bool withActions,
+  }) async {
+    final notificationDetails = NotificationDetails(
+      android: withActions
+          ? _medicationNotificationDetails()
+          : _basicNotificationDetails(),
+    );
+
+    try {
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: payload,
+        matchDateTimeComponents: daily ? DateTimeComponents.time : null,
+      );
+    } catch (_) {
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: payload,
+        matchDateTimeComponents: daily ? DateTimeComponents.time : null,
+      );
+    }
   }
 
   static Future<void> cancelMedicationReminders(
@@ -184,13 +208,29 @@ class NotificationService {
     await _notifications.cancelAll();
   }
 
-  static AndroidNotificationDetails _medicationNotificationDetails() {
+  static AndroidNotificationDetails _basicNotificationDetails() {
     return const AndroidNotificationDetails(
-      'medication_reminders',
-      'Recordatorios de medicamentos',
-      channelDescription: 'Notificaciones para recordar tomas de medicamentos',
+      _channelId,
+      _channelName,
+      channelDescription: _channelDescription,
       importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.reminder,
+    );
+  }
+
+  static AndroidNotificationDetails _medicationNotificationDetails() {
+    return const AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: _channelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.reminder,
       actions: [
         AndroidNotificationAction(
           actionTaken,
@@ -211,7 +251,6 @@ class NotificationService {
     final payload = response.payload;
 
     if (actionId == actionTaken) {
-      // Por ahora abrimos la app. Luego conectamos esto con registrar toma automáticamente.
       return;
     }
 
@@ -245,7 +284,7 @@ class NotificationService {
       minute,
     );
 
-    if (scheduledDate.isBefore(now)) {
+    if (!scheduledDate.isAfter(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 

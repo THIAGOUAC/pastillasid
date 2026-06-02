@@ -43,7 +43,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/medications/new',
       name: 'medications-new',
-      builder: (context, state) => const MedicationFormPage(),
+      builder: (context, state) {
+        final initialData = state.extra as Map<String, dynamic>?;
+
+        return MedicationFormPage(initialData: initialData);
+      },
     ),
     GoRoute(
       path: '/medications/edit/:id',

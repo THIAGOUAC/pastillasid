@@ -6,8 +6,9 @@ import '../controllers/medication_controller.dart';
 
 class MedicationFormPage extends ConsumerStatefulWidget {
   final String? medicationId;
+  final Map<String, dynamic>? initialData;
 
-  const MedicationFormPage({super.key, this.medicationId});
+  const MedicationFormPage({super.key, this.medicationId, this.initialData});
 
   @override
   ConsumerState<MedicationFormPage> createState() => _MedicationFormPageState();
@@ -33,6 +34,8 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
 
   bool get _isEditing => widget.medicationId != null;
 
+  bool get _hasInitialData => widget.initialData != null && !_isEditing;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -40,6 +43,13 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
     if (!_loadedMedicationData && _isEditing) {
       _loadMedicationData();
       _loadedMedicationData = true;
+      return;
+    }
+
+    if (!_loadedMedicationData && _hasInitialData) {
+      _loadInitialDataFromAI();
+      _loadedMedicationData = true;
+      return;
     }
   }
 
@@ -70,6 +80,68 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
       ..addAll(
         medication.times.map(_timeOfDayFromString).whereType<TimeOfDay>(),
       );
+  }
+
+  void _loadInitialDataFromAI() {
+    final data = widget.initialData;
+
+    if (data == null) return;
+
+    final name = _readString(data, 'nombre_medicamento');
+    final type = _readString(data, 'tipo');
+    final doseAmount = _readDynamicAsString(data, 'dosis_cantidad');
+    final doseUnit = _readString(data, 'dosis_unidad');
+    final duration = _readDynamicAsString(data, 'duracion_tratamiento');
+    final instructions = _readString(data, 'indicaciones');
+    final warnings = _readString(data, 'advertencias');
+
+    if (name != null && name.trim().isNotEmpty) {
+      _nameController.text = name.trim();
+    }
+
+    if (doseAmount != null && doseAmount.trim().isNotEmpty) {
+      final extractedNumber = _extractNumber(doseAmount);
+      if (extractedNumber != null) {
+        _doseAmountController.text = _formatNumber(extractedNumber);
+      }
+    }
+
+    final extractedDays = _extractInteger(duration);
+    if (extractedDays != null && extractedDays > 0) {
+      _treatmentDaysController.text = extractedDays.toString();
+    }
+
+    _selectedType = _medicationTypeFromAI(type);
+    _selectedUnit = _doseUnitFromAI(doseUnit);
+
+    final horarios = data['horarios_sugeridos'];
+    if (horarios is List) {
+      _selectedTimes
+        ..clear()
+        ..addAll(
+          horarios
+              .whereType<String>()
+              .map(_timeOfDayFromString)
+              .whereType<TimeOfDay>(),
+        );
+    }
+
+    final notes = [
+      if (instructions != null && instructions.trim().isNotEmpty)
+        instructions.trim(),
+      if (warnings != null && warnings.trim().isNotEmpty)
+        'Advertencia: ${warnings.trim()}',
+    ];
+
+    if (notes.isNotEmpty) {
+      _instructionsController.text = notes.join('\n');
+    }
+
+    _currentStockController.text = '1';
+    _stockPerDoseController.text = _doseAmountController.text.trim().isEmpty
+        ? '1'
+        : _doseAmountController.text.trim();
+    _minimumStockAlertController.text = '1';
   }
 
   @override
@@ -207,9 +279,18 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
               Text(
                 _isEditing
                     ? 'Modifica los datos del medicamento'
+                    : _hasInitialData
+                    ? 'Revisa los datos extraídos por IA'
                     : 'Datos del medicamento',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
+              if (_hasInitialData) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'La IA puede equivocarse. Revisa y completa los datos antes de guardar.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
@@ -463,6 +544,112 @@ class _DoseUnitSelector extends StatelessWidget {
         );
       }).toList(),
     );
+  }
+}
+
+String? _readString(Map<String, dynamic> data, String key) {
+  final value = data[key];
+
+  if (value == null) return null;
+  if (value is String) return value;
+  return value.toString();
+}
+
+String? _readDynamicAsString(Map<String, dynamic> data, String key) {
+  final value = data[key];
+
+  if (value == null) return null;
+  return value.toString();
+}
+
+double? _extractNumber(String? value) {
+  if (value == null) return null;
+
+  final match = RegExp(r'(\d+([.,]\d+)?)').firstMatch(value);
+
+  if (match == null) return null;
+
+  final text = match.group(0)?.replaceAll(',', '.');
+
+  if (text == null) return null;
+
+  return double.tryParse(text);
+}
+
+int? _extractInteger(String? value) {
+  if (value == null) return null;
+
+  final match = RegExp(r'(\d+)').firstMatch(value);
+
+  if (match == null) return null;
+
+  final text = match.group(0);
+
+  if (text == null) return null;
+
+  return int.tryParse(text);
+}
+
+MedicationType _medicationTypeFromAI(String? value) {
+  final text = value?.toLowerCase().trim();
+
+  switch (text) {
+    case 'pastilla':
+    case 'tableta':
+    case 'comprimido':
+      return MedicationType.pill;
+    case 'capsula':
+    case 'cápsula':
+      return MedicationType.capsule;
+    case 'jarabe':
+    case 'suspension':
+    case 'suspensión':
+      return MedicationType.syrup;
+    case 'gotas':
+      return MedicationType.drops;
+    case 'inyeccion':
+    case 'inyección':
+      return MedicationType.injection;
+    case 'crema':
+      return MedicationType.cream;
+    default:
+      return MedicationType.other;
+  }
+}
+
+DoseUnit _doseUnitFromAI(String? value) {
+  final text = value?.toLowerCase().trim();
+
+  switch (text) {
+    case 'pildora':
+    case 'píldora':
+    case 'pastilla':
+    case 'tableta':
+    case 'comprimido':
+      return DoseUnit.pill;
+    case 'capsula':
+    case 'cápsula':
+      return DoseUnit.capsule;
+    case 'ml':
+    case 'mililitro':
+    case 'mililitros':
+      return DoseUnit.ml;
+    case 'cucharada':
+      return DoseUnit.tablespoon;
+    case 'cucharadita':
+      return DoseUnit.teaspoon;
+    case 'gotas':
+      return DoseUnit.drops;
+    case 'inyeccion':
+    case 'inyección':
+      return DoseUnit.injection;
+    case 'aplicacion':
+    case 'aplicación':
+    case 'inhalacion':
+    case 'inhalación':
+      return DoseUnit.application;
+    default:
+      return DoseUnit.other;
   }
 }
 
