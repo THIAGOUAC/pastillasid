@@ -137,7 +137,11 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
       _instructionsController.text = notes.join('\n');
     }
 
-    _currentStockController.text = '1';
+    final stockActual = _readDynamicAsString(data, 'stock_actual');
+    final stockNum = _extractNumber(stockActual ?? '');
+    _currentStockController.text = stockNum != null
+        ? _formatNumber(stockNum)
+        : '1';
     _stockPerDoseController.text = _doseAmountController.text.trim().isEmpty
         ? '1'
         : _doseAmountController.text.trim();

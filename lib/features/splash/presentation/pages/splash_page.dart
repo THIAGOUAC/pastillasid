@@ -71,7 +71,8 @@ class _SplashPageState extends ConsumerState<SplashPage>
         ref.read(appFontSizeProvider.notifier).state = fontSize;
         ref.read(themeModeProvider.notifier).state = themeMode;
       }
-      context.go('/home');
+      // Va al login para que ofrezca biometría
+      context.go('/login');
     } else {
       context.go('/onboarding-profile');
     }

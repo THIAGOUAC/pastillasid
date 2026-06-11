@@ -50,7 +50,6 @@ class ChatbotController extends StateNotifier<AsyncValue<List<ChatMessage>>> {
       final response = await _session!.sendMessage(Content.text(text.trim()));
       final responseText = response.text ?? 'No pude generar una respuesta.';
 
-      // Detectar si Gerbacio quiere registrar un medicamento
       final medicationData = _extractMedicationAction(responseText);
       final displayText = medicationData != null
           ? _extractDisplayText(responseText)
@@ -89,13 +88,11 @@ class ChatbotController extends StateNotifier<AsyncValue<List<ChatMessage>>> {
   }
 }
 
-// Extrae el JSON de acción si existe
 Map<String, dynamic>? _extractMedicationAction(String text) {
   try {
     final start = text.indexOf('##REGISTRAR_MEDICAMENTO##');
     final end = text.indexOf('##FIN##');
     if (start == -1 || end == -1) return null;
-
     final jsonStr = text.substring(start + 25, end).trim();
     final decoded = jsonDecode(jsonStr);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -105,7 +102,6 @@ Map<String, dynamic>? _extractMedicationAction(String text) {
   }
 }
 
-// Extrae solo el texto visible sin el bloque JSON
 String _extractDisplayText(String text) {
   final start = text.indexOf('##REGISTRAR_MEDICAMENTO##');
   if (start == -1) return text.trim();
@@ -129,14 +125,17 @@ Tu personalidad:
 - Te presentas como "Doctor Gerbacio" cuando te preguntan tu nombre
 
 REGISTRO DE MEDICAMENTOS:
-Cuando el usuario quiera registrar o agregar un medicamento, primero conversa para obtener estos datos:
-- Nombre del medicamento
-- Tipo (pastilla, capsula, jarabe, gotas, inyeccion, crema, otro)
-- Dosis (cantidad y unidad: pildora, capsula, ml, cucharada, cucharadita, gotas, inyeccion, aplicacion, otro)
-- Horarios de toma (formato HH:mm)
-- Duración del tratamiento en días
+Cuando el usuario quiera registrar o agregar un medicamento, pregunta de uno en uno estos datos obligatorios hasta tenerlos todos:
+1. Nombre del medicamento
+2. Tipo (pastilla, capsula, jarabe, gotas, inyeccion, crema, otro)
+3. Dosis (cantidad y unidad: pildora, capsula, ml, cucharada, cucharadita, gotas, inyeccion, aplicacion, otro)
+4. Horarios de toma (formato HH:mm, puede ser uno o varios)
+5. Duración del tratamiento en días
+6. Cantidad disponible actualmente (ejemplo: "tengo 20 pastillas")
 
-Cuando tengas suficiente información, responde con el texto normal Y al final agrega este bloque exacto:
+NO generes el bloque JSON hasta tener los 6 datos. Si el usuario no da alguno, pregúntalo explícitamente antes de continuar.
+
+Cuando tengas TODOS los datos, responde con un resumen amigable Y al final agrega este bloque exacto:
 
 ##REGISTRAR_MEDICAMENTO##
 {
@@ -146,13 +145,12 @@ Cuando tengas suficiente información, responde con el texto normal Y al final a
   "dosis_unidad": "pildora",
   "horarios_sugeridos": ["08:00", "20:00"],
   "duracion_tratamiento": "7 días",
+  "stock_actual": 20,
   "indicaciones": "tomar con agua",
   "advertencias": null,
   "confianza": "alta"
 }
 ##FIN##
-
-Si faltan datos importantes, pregunta antes de generar el bloque.
 
 Restricciones importantes:
 - Nunca diagnostiques enfermedades
