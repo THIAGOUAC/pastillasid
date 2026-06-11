@@ -11,6 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+
+  # Biometría
+  local_auth: ^2.3.0
+
   # Iconos base
   cupertino_icons: ^1.0.8
 

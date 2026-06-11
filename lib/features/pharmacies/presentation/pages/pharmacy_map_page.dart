@@ -23,7 +23,6 @@ class _PharmacyMapPageState extends State<PharmacyMapPage> {
 
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-
       if (!serviceEnabled) {
         setState(() {
           _errorMessage = 'Activa la ubicación del dispositivo.';
@@ -33,11 +32,9 @@ class _PharmacyMapPageState extends State<PharmacyMapPage> {
       }
 
       var permission = await Geolocator.checkPermission();
-
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-
       if (permission == LocationPermission.denied) {
         setState(() {
           _errorMessage = 'Permiso de ubicación denegado.';
@@ -45,11 +42,9 @@ class _PharmacyMapPageState extends State<PharmacyMapPage> {
         });
         return;
       }
-
       if (permission == LocationPermission.deniedForever) {
         setState(() {
-          _errorMessage =
-              'El permiso de ubicación está bloqueado. Actívalo desde ajustes.';
+          _errorMessage = 'Permiso bloqueado. Actívalo desde ajustes.';
           _isLoading = false;
         });
         return;
@@ -65,6 +60,9 @@ class _PharmacyMapPageState extends State<PharmacyMapPage> {
         _currentPosition = position;
         _isLoading = false;
       });
+
+      // Abrir farmacias automáticamente al obtener ubicación
+      await _openNearbyPharmaciesInMaps();
     } catch (error) {
       setState(() {
         _errorMessage = 'No se pudo obtener la ubicación: $error';
@@ -75,10 +73,9 @@ class _PharmacyMapPageState extends State<PharmacyMapPage> {
 
   Future<void> _openNearbyPharmaciesInMaps() async {
     final position = _currentPosition;
-
     if (position == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Primero obtén tu ubicación actual.')),
+        const SnackBar(content: Text('Primero obtén tu ubicación.')),
       );
       return;
     }
@@ -88,53 +85,41 @@ class _PharmacyMapPageState extends State<PharmacyMapPage> {
       _errorMessage = null;
     });
 
-    final latitude = position.latitude;
-    final longitude = position.longitude;
+    final lat = position.latitude;
+    final lng = position.longitude;
 
+    // URL que abre Google Maps centrado en tu posición buscando farmacias
     final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1'
-      '&query=farmacias%20cerca%20de%20mi'
-      '&query_place_id='
-      '&center=$latitude,$longitude',
+      'https://www.google.com/maps/search/farmacias/@$lat,$lng,15z',
     );
 
     try {
       final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-
       if (!opened) {
-        setState(() {
-          _errorMessage = 'No se pudo abrir Google Maps.';
-        });
+        setState(() => _errorMessage = 'No se pudo abrir Google Maps.');
       }
     } catch (error) {
-      setState(() {
-        _errorMessage = 'No se pudo abrir Google Maps: $error';
-      });
+      setState(() => _errorMessage = 'Error al abrir Google Maps: $error');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isOpeningMaps = false;
-        });
-      }
+      if (mounted) setState(() => _isOpeningMaps = false);
     }
   }
 
-  Future<void> _openRouteSearchInMaps() async {
+  Future<void> _openRouteToPharmacy() async {
     final position = _currentPosition;
-
     if (position == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Primero obtén tu ubicación actual.')),
+        const SnackBar(content: Text('Primero obtén tu ubicación.')),
       );
       return;
     }
 
-    final latitude = position.latitude;
-    final longitude = position.longitude;
+    final lat = position.latitude;
+    final lng = position.longitude;
 
     final uri = Uri.parse(
       'https://www.google.com/maps/dir/?api=1'
-      '&origin=$latitude,$longitude'
+      '&origin=$lat,$lng'
       '&destination=farmacia'
       '&travelmode=driving',
     );
@@ -144,107 +129,349 @@ class _PharmacyMapPageState extends State<PharmacyMapPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final position = _currentPosition;
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 20),
         children: [
-          Text(
-            'Farmacias cercanas',
-            style: Theme.of(context).textTheme.headlineMedium,
+          // ── Header ──────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: cs.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.local_pharmacy,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Farmacias cercanas', style: tt.titleLarge),
+                      Text(
+                        'Encuentra la más cercana a ti',
+                        style: tt.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Usaremos tu ubicación para buscar farmacias cercanas en Google Maps.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+
           const SizedBox(height: 20),
-          Card(
-            child: SizedBox(
-              height: 260,
-              child: Center(
-                child: Icon(
-                  Icons.map,
-                  size: 96,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+
+          // ── Card ilustración + botón principal ───────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(18),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _isLoading ? null : _getCurrentLocation,
-            icon: _isLoading
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location),
-            label: Text(
-              _isLoading ? 'Obteniendo ubicación...' : 'Usar mi ubicación',
-            ),
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: position == null || _isOpeningMaps
-                ? null
-                : _openNearbyPharmaciesInMaps,
-            icon: _isOpeningMaps
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.local_pharmacy),
-            label: Text(
-              _isOpeningMaps
-                  ? 'Abriendo Google Maps...'
-                  : 'Buscar farmacias en Google Maps',
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: position == null ? null : _openRouteSearchInMaps,
-            icon: const Icon(Icons.directions),
-            label: const Text('Buscar ruta a una farmacia'),
-          ),
-          const SizedBox(height: 16),
-          if (_errorMessage != null)
-            Card(
-              child: ListTile(
-                leading: Icon(
-                  Icons.error_outline,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                title: const Text('Aviso'),
-                subtitle: Text(_errorMessage!),
-              ),
-            ),
-          if (position != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Ubicación actual',
-                      style: Theme.of(context).textTheme.titleLarge,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 12),
-                    Text('Latitud: ${position.latitude}'),
-                    Text('Longitud: ${position.longitude}'),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Con esta ubicación puedes buscar farmacias cercanas usando Google Maps.',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Buscar farmacias cerca de mí',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Obtenemos tu ubicación y abrimos Google Maps con las farmacias más cercanas.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 13,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading || _isOpeningMaps
+                          ? null
+                          : _getCurrentLocation,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: cs.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: _isLoading || _isOpeningMaps
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: cs.primary,
+                              ),
+                            )
+                          : const Icon(Icons.my_location),
+                      label: Text(
+                        _isLoading
+                            ? 'Obteniendo ubicación...'
+                            : _isOpeningMaps
+                            ? 'Abriendo Google Maps...'
+                            : 'Buscar farmacias cercanas',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Error ────────────────────────────────────
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: cs.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.error.withValues(alpha: 0.30)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: cs.error, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: tt.bodyMedium?.copyWith(color: cs.error),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
+
+          // ── Ubicación obtenida ────────────────────────
+          if (position != null) ...[
+            const SizedBox(height: 16),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E8B57).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF2E8B57).withValues(alpha: 0.30),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Color(0xFF2E8B57),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Ubicación obtenida correctamente',
+                        style: tt.bodyMedium?.copyWith(
+                          color: const Color(0xFF1B5E20),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Opciones adicionales ──────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'OTRAS OPCIONES',
+                style: tt.labelSmall?.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Card(
+                child: InkWell(
+                  onTap: _isOpeningMaps ? null : _openNearbyPharmaciesInMaps,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.local_pharmacy,
+                            color: cs.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ver farmacias en el mapa',
+                                style: tt.titleMedium,
+                              ),
+                              Text(
+                                'Abre Google Maps centrado en tu zona',
+                                style: tt.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: cs.primary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Card(
+                child: InkWell(
+                  onTap: _openRouteToPharmacy,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF2E8B57,
+                            ).withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.directions,
+                            color: Color(0xFF2E8B57),
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Cómo llegar a una farmacia',
+                                style: tt.titleMedium,
+                              ),
+                              Text(
+                                'Obtén ruta en Google Maps',
+                                style: tt.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: Color(0xFF2E8B57),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+
+          // ── Info ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.primary.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: cs.primary.withValues(alpha: 0.60),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'La búsqueda se realiza a través de Google Maps. Necesitas conexión a internet.',
+                      style: tt.bodyMedium?.copyWith(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
@@ -6,13 +7,15 @@ import '../../features/dashboard/presentation/pages/main_shell_page.dart';
 import '../../features/medicine_scan/presentation/pages/scan_medicine_page.dart';
 import '../../features/medications/presentation/pages/medication_detail_page.dart';
 import '../../features/medications/presentation/pages/medication_form_page.dart';
-import '../../features/medications/presentation/pages/medication_list_page.dart';
 import '../../features/pharmacies/presentation/pages/pharmacy_map_page.dart';
 import '../../features/profile/presentation/pages/onboarding_profile_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 final GoRouter appRouter = GoRouter(
+  navigatorKey: navigatorKey,
   initialLocation: '/splash',
   routes: [
     GoRoute(
@@ -36,16 +39,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const MainShellPage(),
     ),
     GoRoute(
-      path: '/medications',
-      name: 'medications',
-      builder: (context, state) => const MedicationListPage(),
-    ),
-    GoRoute(
       path: '/medications/new',
       name: 'medications-new',
       builder: (context, state) {
         final initialData = state.extra as Map<String, dynamic>?;
-
         return MedicationFormPage(initialData: initialData);
       },
     ),
@@ -54,7 +51,6 @@ final GoRouter appRouter = GoRouter(
       name: 'medications-edit',
       builder: (context, state) {
         final medicationId = state.pathParameters['id']!;
-
         return MedicationFormPage(medicationId: medicationId);
       },
     ),
@@ -63,7 +59,6 @@ final GoRouter appRouter = GoRouter(
       name: 'medication-detail',
       builder: (context, state) {
         final medicationId = state.pathParameters['id']!;
-
         return MedicationDetailPage(medicationId: medicationId);
       },
     ),

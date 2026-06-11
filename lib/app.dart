@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
-
 import 'core/router/app_router.dart';
 
 class PastillasApp extends ConsumerWidget {
@@ -16,7 +15,7 @@ class PastillasApp extends ConsumerWidget {
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'Pastillas ID',
+      title: 'PastillasPE',
       theme: AppTheme.lightTheme(fontScale: fontScale),
       darkTheme: AppTheme.darkTheme(fontScale: fontScale),
       themeMode: themeMode,

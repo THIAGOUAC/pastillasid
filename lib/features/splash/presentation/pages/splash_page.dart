@@ -13,19 +13,42 @@ class SplashPage extends ConsumerStatefulWidget {
   ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends ConsumerState<SplashPage> {
+class _SplashPageState extends ConsumerState<SplashPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+  late Animation<double> _scaleAnim;
+
   @override
   void initState() {
     super.initState();
 
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+
+    _scaleAnim = Tween<double>(begin: 0.80, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+    );
+
+    _animController.forward();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkSession();
+      Future.delayed(const Duration(milliseconds: 1200), _checkSession);
     });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkSession() async {
     final user = FirebaseAuth.instance.currentUser;
-
     if (!mounted) return;
 
     if (user == null) {
@@ -42,15 +65,12 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
     if (profileDoc.exists) {
       final data = profileDoc.data();
-
       if (data != null) {
         final fontSize = _fontSizeFromString(data['fontSize'] as String?);
         final themeMode = _themeModeFromString(data['themeMode'] as String?);
-
         ref.read(appFontSizeProvider.notifier).state = fontSize;
         ref.read(themeModeProvider.notifier).state = themeMode;
       }
-
       context.go('/home');
     } else {
       context.go('/onboarding-profile');
@@ -59,26 +79,67 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: cs.primary,
       body: Center(
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: ScaleTransition(
+            scale: _scaleAnim,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.medication_liquid,
-                  size: 72,
-                  color: Theme.of(context).colorScheme.primary,
+                // ── Logo ──────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: const Icon(
+                    Icons.local_hospital_rounded,
+                    size: 72,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 24),
+
+                // ── Nombre ────────────────────────────────
+                const Text(
+                  'PastillasPE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
                 Text(
-                  'Pastillas ID',
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  'Tu asistente de medicamentos',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.80),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                const CircularProgressIndicator(),
+
+                const SizedBox(height: 48),
+
+                // ── Loader ────────────────────────────────
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white.withValues(alpha: 0.70),
+                  ),
+                ),
               ],
             ),
           ),

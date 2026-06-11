@@ -3,25 +3,27 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Modo claro
-  static const Color lightPrimaryBrown = Color(0xFF964206);
-  static const Color lightSecondaryBrown = Color(0xFFAD542E);
-  static const Color lightDarkBrown = Color(0xFF8A3A04);
-  static const Color lightPinkBackground = Color(0xFFFFD4CC);
+  // ── Modo claro ──────────────────────────────────────────
+  static const Color lightPrimary = Color(0xFF1A6B8A); // Azul médico
+  static const Color lightSecondary = Color(0xFF2E8B57); // Verde salud
+  static const Color lightAccent = Color(0xFFC9952A); // Dorado peruano
+  static const Color lightBackground = Color(0xFFF5F9FC); // Blanco clínico
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightAlert = Color(0xFFDF3434);
-  static const Color lightTextPrimary = Color(0xFF000000);
-  static const Color lightTextSecondary = Color(0xFF4A5568);
+  static const Color lightSurface = Color(0xFFE8F4F8);
+  static const Color lightAlert = Color(0xFFD32F2F);
+  static const Color lightTextPrimary = Color(0xFF1C2B3A);
+  static const Color lightTextSecondary = Color(0xFF5A7184);
+  static const Color lightBorder = Color(0xFFCBDDE6);
 
-  // Modo oscuro
-  static const Color darkPrimaryBrown = Color(0xFF5A2503);
-  static const Color darkSecondaryBrown = Color(0xFFB8643C);
-  static const Color darkEmphasisBrown = Color(0xFFD17A4A);
-  static const Color darkBackground = Color(0xFF1E1410);
-  static const Color darkCard = Color(0xFF2A1B16);
-  static const Color darkSurface = Color(0xFF3A241C);
-  static const Color darkAlert = Color(0xFFFF6B6B);
-  static const Color darkTextPrimary = Color(0xFFFFF7F2);
-  static const Color darkTextSecondary = Color(0xFFD8C7BF);
-  static const Color darkBorder = Color(0xFF5C4037);
+  // ── Modo oscuro ──────────────────────────────────────────
+  static const Color darkPrimary = Color(0xFF1E8AB0); // Azul más vivo en oscuro
+  static const Color darkSecondary = Color(0xFF3AAD6E); // Verde salud
+  static const Color darkAccent = Color(0xFFD4A83A); // Dorado cálido
+  static const Color darkBackground = Color(0xFF0D1B24); // Azul muy oscuro
+  static const Color darkCard = Color(0xFF152330);
+  static const Color darkSurface = Color(0xFF1E3245);
+  static const Color darkAlert = Color(0xFFFF5252);
+  static const Color darkTextPrimary = Color(0xFFE8F4F8);
+  static const Color darkTextSecondary = Color(0xFF8BAFC2);
+  static const Color darkBorder = Color(0xFF2A4A5E);
 }
