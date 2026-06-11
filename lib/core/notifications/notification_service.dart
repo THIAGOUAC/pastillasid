@@ -32,7 +32,7 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation('America/Lima'));
 
     const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+      '@drawable/ic_notification',
     );
     const initializationSettings = InitializationSettings(
       android: androidSettings,
@@ -52,12 +52,34 @@ class NotificationService {
     await requestPermissions();
   }
 
+  // Obtiene el payload si la app fue abierta por notificación
+  static Future<String?> getLaunchDetails() async {
+    final details = await _notifications.getNotificationAppLaunchDetails();
+    if (details?.didNotificationLaunchApp == true) {
+      return details?.notificationResponse?.payload;
+    }
+    return null;
+  }
+
+  // Procesa el payload independientemente de cómo llegó
+  static void handlePayload(String payload) {
+    if (payload.isEmpty) return;
+    final parts = payload.split('|');
+    final medName = parts.length > 1 ? parts[1] : 'Medicamento';
+    final doseText = parts.length > 2 ? parts[2] : '';
+
+    showMedicationDialog(
+      medicationName: medName,
+      doseText: doseText,
+      payload: payload,
+    );
+  }
+
   static Future<void> requestPermissions() async {
     final androidPlugin = _notifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
   }
@@ -66,7 +88,7 @@ class NotificationService {
     await _notifications.show(
       999,
       'PastillasPE',
-      'Notificación funcionando correctamente',
+      'Notificacion funcionando correctamente',
       NotificationDetails(android: _basicNotificationDetails()),
     );
   }
@@ -91,8 +113,8 @@ class NotificationService {
   }) async {
     await _notifications.show(
       medicationName.hashCode.abs() % 2147483647,
-      '⚠ Stock bajo — PastillasPE',
-      '$medicationName está por acabarse. Stock: ${_formatNumber(currentStock)}',
+      'Stock bajo - PastillasPE',
+      '$medicationName esta por acabarse. Stock: ${_formatNumber(currentStock)}',
       NotificationDetails(android: _basicNotificationDetails()),
     );
   }
@@ -114,7 +136,7 @@ class NotificationService {
       await _notifications.zonedSchedule(
         notificationId,
         'Hora de tomar tu medicamento',
-        '$medicationName · $doseText',
+        '$medicationName - $doseText',
         scheduledDate,
         NotificationDetails(android: _medicationNotificationDetails()),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -135,7 +157,7 @@ class NotificationService {
     await _notifications.zonedSchedule(
       DateTime.now().millisecondsSinceEpoch % 2147483647,
       'Recordatorio pospuesto',
-      '$medicationName · $doseText',
+      '$medicationName - $doseText',
       scheduledDate,
       NotificationDetails(android: _medicationNotificationDetails()),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -152,7 +174,7 @@ class NotificationService {
     await _notifications.zonedSchedule(
       id,
       'Hora de tomar tu medicamento',
-      '$medicationName · $doseText',
+      '$medicationName - $doseText',
       tz.TZDateTime.from(scheduledDate, tz.local),
       NotificationDetails(android: _medicationNotificationDetails()),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -199,7 +221,6 @@ class NotificationService {
     );
   }
 
-  // ── Detalles de notificación ───────────────────────────
   static AndroidNotificationDetails _basicNotificationDetails() {
     return const AndroidNotificationDetails(
       _channelId,
@@ -226,19 +247,18 @@ class NotificationService {
       actions: [
         AndroidNotificationAction(
           actionTaken,
-          'Ya tomé',
+          'Ya tome',
           showsUserInterface: true,
         ),
         AndroidNotificationAction(
           actionSnooze,
-          'Lo tomaré en 10 min',
+          'Lo tomare en 10 min',
           showsUserInterface: true,
         ),
       ],
     );
   }
 
-  // ── Handler de respuesta ───────────────────────────────
   static void _onNotificationResponse(NotificationResponse response) {
     final actionId = response.actionId;
     final payload = response.payload;
@@ -259,7 +279,7 @@ class NotificationService {
       return;
     }
 
-    // Tap en notificación → diálogo in-app
+    // Tap sin acción → mostrar diálogo
     showMedicationDialog(
       medicationName: medName,
       doseText: doseText,
@@ -267,7 +287,6 @@ class NotificationService {
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────
   static tz.TZDateTime _nextDateTimeForTime(String time) {
     final parts = time.split(':');
     final hour = int.tryParse(parts[0]) ?? 8;
@@ -352,7 +371,7 @@ class _MedicationReminderDialog extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Ya lo tomé'),
+                label: const Text('Ya lo tome'),
               ),
             ),
             const SizedBox(height: 10),
