@@ -32,7 +32,7 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation('America/Lima'));
 
     const androidSettings = AndroidInitializationSettings(
-      '@drawable/ic_notification',
+      '@mipmap/ic_launcher',
     );
     const initializationSettings = InitializationSettings(
       android: androidSettings,
